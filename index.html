@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pingu Runs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #000; font-family: 'Quicksand', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  canvas { display: block; }
+
+  #ui-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #score-display {
+    position: absolute;
+    top: 20px; left: 20px;
+    color: #fff;
+    font-size: 24px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  }
+  #score-display div { margin-bottom: 4px; }
+
+  .screen-btn {
+    pointer-events: auto;
+    cursor: pointer;
+    background: linear-gradient(135deg, #4a9eff, #2a7cdf);
+    color: #fff;
+    border: none;
+    padding: 16px 56px;
+    font-size: 22px;
+    font-weight: 700;
+    border-radius: 50px;
+    margin-top: 28px;
+    font-family: 'Quicksand', inherit;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 20px rgba(74, 158, 255, 0.4);
+    transition: all 0.2s;
+  }
+  .screen-btn:hover { background: linear-gradient(135deg, #5aafff, #3a8cef); transform: scale(1.06); box-shadow: 0 6px 28px rgba(74, 158, 255, 0.5); }
+  .screen-btn:active { transform: scale(0.97); }
+
+  #start-screen, #game-over-screen {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  #start-screen {
+    background: transparent;
+    transition: opacity 0.6s ease;
+  }
+  #start-screen .title-container {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  #start-screen h1 {
+    font-family: 'Fredoka One', cursive;
+    color: #fff;
+    font-size: 80px;
+    margin-bottom: 0;
+    letter-spacing: 4px;
+    text-shadow: 0 0 30px rgba(100, 180, 255, 0.5), 0 4px 8px rgba(0,0,0,0.6), 0 0 60px rgba(80, 160, 255, 0.2);
+  }
+  #start-screen .subtitle {
+    font-family: 'Quicksand', sans-serif;
+    color: rgba(180, 210, 240, 0.8);
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  #start-screen p {
+    color: rgba(200, 220, 240, 0.8);
+    font-size: 17px;
+    margin-top: 20px;
+  }
+  #start-screen .controls-hint {
+    color: rgba(140, 170, 200, 0.7);
+    font-size: 13px;
+    margin-top: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  #game-over-screen {
+    background: rgba(10, 10, 20, 0.88);
+    display: none;
+  }
+  #game-over-screen h1 {
+    font-family: 'Fredoka One', cursive;
+    color: #ff6b6b;
+    font-size: 52px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 20px rgba(255, 100, 100, 0.3), 2px 2px 4px rgba(0,0,0,0.5);
+  }
+  #game-over-screen .final-score {
+    color: #fff;
+    font-size: 24px;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  #game-over-screen p {
+    color: #aab;
+    font-size: 18px;
+    margin-top: 20px;
+  }
+
+  /* Leaderboard */
+  .leaderboard {
+    margin-top: 18px;
+    width: 320px;
+    text-align: center;
+  }
+  .leaderboard h2 {
+    font-family: 'Fredoka One', cursive;
+    color: rgba(200, 220, 255, 0.9);
+    font-size: 20px;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+  }
+  .leaderboard-list {
+    list-style: none;
+    padding: 0;
+  }
+  .leaderboard-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 16px;
+    margin: 3px 0;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    color: rgba(200, 220, 240, 0.9);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .leaderboard-list li .rank {
+    color: rgba(140, 180, 220, 0.7);
+    width: 28px;
+    text-align: left;
+    font-size: 13px;
+  }
+  .leaderboard-list li .lb-name {
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .leaderboard-list li .lb-score {
+    color: #6bc5ff;
+    min-width: 60px;
+    text-align: right;
+  }
+  .leaderboard-list li:first-child {
+    background: rgba(255, 215, 0, 0.12);
+  }
+  .leaderboard-loading {
+    color: rgba(160, 180, 200, 0.6);
+    font-size: 14px;
+    padding: 12px;
+  }
+
+  /* Name prompt modal */
+  #name-modal {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5, 10, 25, 0.92);
+    pointer-events: auto;
+    z-index: 20;
+  }
+  #name-modal h2 {
+    font-family: 'Fredoka One', cursive;
+    color: #6bc5ff;
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+  #name-modal p {
+    color: rgba(180, 200, 220, 0.8);
+    font-size: 16px;
+    margin-bottom: 20px;
+  }
+  #name-modal input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(100, 160, 255, 0.4);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 20px;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    width: 260px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #name-modal input:focus {
+    border-color: rgba(100, 180, 255, 0.8);
+  }
+  #name-modal input::placeholder {
+    color: rgba(150, 170, 200, 0.5);
+  }
+  #name-modal .modal-btns {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+  }
+  #name-modal .modal-btn {
+    pointer-events: auto;
+    cursor: pointer;
+    border: none;
+    padding: 12px 32px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Quicksand', sans-serif;
+    border-radius: 50px;
+    transition: all 0.2s;
+  }
+  #name-modal .modal-btn.submit {
+    background: linear-gradient(135deg, #4a9eff, #2a7cdf);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(74, 158, 255, 0.3);
+  }
+  #name-modal .modal-btn.submit:hover { transform: scale(1.05); }
+  #name-modal .modal-btn.skip {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(180, 200, 220, 0.7);
+  }
+  #name-modal .modal-btn.skip:hover { background: rgba(255, 255, 255, 0.15); }
+</style>
+</head>
+<body>
+
+<div id="ui-overlay">
+  <div id="score-display" style="display:none;">
+    <div id="snowball-score">Snowballs: 0</div>
+    <div id="distance-score">Distance: 0</div>
+    <div id="total-score">Score: 0</div>
+  </div>
+
+  <div id="start-screen">
+    <div class="title-container">
+      <h1>PINGU RUNS</h1>
+      <div class="subtitle">an endless arctic adventure</div>
+    </div>
+    <p>Dodge trees, jump rocks, collect snowballs</p>
+    <button class="screen-btn" id="start-btn">Play</button>
+    <div class="controls-hint">← → / A D &nbsp; switch lanes &nbsp;&nbsp;|&nbsp;&nbsp; ↑ W Space &nbsp; jump &nbsp;&nbsp;|&nbsp;&nbsp; ↓ S &nbsp; roll</div>
+    <div class="leaderboard" id="start-leaderboard">
+      <h2>LEADERBOARD</h2>
+      <div class="leaderboard-loading">Loading...</div>
+    </div>
+  </div>
+
+  <div id="game-over-screen">
+    <h1>Game Over!</h1>
+    <div class="final-score" id="final-score-text">Score: 0</div>
+    <div class="leaderboard" id="gameover-leaderboard">
+      <h2>LEADERBOARD</h2>
+      <div class="leaderboard-loading">Loading...</div>
+    </div>
+    <button class="screen-btn" id="restart-btn">Play Again</button>
+  </div>
+
+  <div id="name-modal">
+    <h2>New High Score!</h2>
+    <p id="name-modal-score">Score: 0</p>
+    <input type="text" id="name-input" placeholder="Your name" maxlength="16" autocomplete="off" />
+    <div class="modal-btns">
+      <button class="modal-btn submit" id="name-submit">Submit</button>
+      <button class="modal-btn skip" id="name-skip">Skip</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ── Supabase Leaderboard ──
+const supabaseUrl = 'https://jdmfhafvhtrlxsbnbxjn.supabase.co';
+const supabaseKey = 'sb_publishable_veS6i8vk_Jz1ldKr3IEpaQ_Z8HVboUO';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+let leaderboardData = [];
+
+async function fetchLeaderboard() {
+  try {
+    const { data, error } = await supabase
+      .from('leaderboard')
+      .select('name, score')
+      .order('score', { ascending: false })
+      .limit(5);
+    if (error) throw error;
+    leaderboardData = data || [];
+  } catch (e) {
+    console.warn('Leaderboard fetch failed:', e);
+    leaderboardData = [];
+  }
+  renderLeaderboard('start-leaderboard');
+  renderLeaderboard('gameover-leaderboard');
+}
+
+function renderLeaderboard(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (leaderboardData.length === 0) {
+    container.innerHTML = '<h2>LEADERBOARD</h2><div class="leaderboard-loading">No scores yet</div>';
+    return;
+  }
+  let html = '<h2>LEADERBOARD</h2><ul class="leaderboard-list">';
+  leaderboardData.forEach((entry, i) => {
+    const medal = i === 0 ? '\u{1F947}' : i === 1 ? '\u{1F948}' : i === 2 ? '\u{1F949}' : '';
+    html += `<li><span class="rank">${medal || (i + 1)}</span><span class="lb-name">${escapeHtml(entry.name)}</span><span class="lb-score">${entry.score.toLocaleString()}</span></li>`;
+  });
+  html += '</ul>';
+  container.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function submitScore(name, score) {
+  try {
+    const { error } = await supabase
+      .from('leaderboard')
+      .insert([{ name, score }]);
+    if (error) throw error;
+    await fetchLeaderboard();
+  } catch (e) {
+    console.warn('Score submit failed:', e);
+  }
+}
+
+function isTopFiveScore(score) {
+  if (leaderboardData.length < 5) return true;
+  return score > leaderboardData[leaderboardData.length - 1].score;
+}
+
+// Fetch leaderboard on load
+fetchLeaderboard();
+
+// ── Sound System (Web Audio API — procedural, no files needed) ──
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function ensureAudio() { if (audioCtx.state === 'suspended') audioCtx.resume(); }
+
+function playJump() {
+  ensureAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(300, audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.12);
+  g.gain.setValueAtTime(0.18, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.15);
+}
+
+function playRoll() {
+  ensureAudio();
+  const bufSize = audioCtx.sampleRate * 0.15;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.15;
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'lowpass'; filt.frequency.value = 600;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.25, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+  src.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+  src.start(); src.stop(audioCtx.currentTime + 0.18);
+}
+
+function playCollect() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  for (let i = 0; i < 2; i++) {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(800 + i * 400, t + i * 0.06);
+    g.gain.setValueAtTime(0.12, t + i * 0.06);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.1);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t + i * 0.06); o.stop(t + i * 0.06 + 0.1);
+  }
+}
+
+function playCrash() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Noise burst
+  const bufSize = audioCtx.sampleRate * 0.3;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.3, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'lowpass'; filt.frequency.value = 1200;
+  src.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+  src.start(); src.stop(t + 0.3);
+  // Low thud
+  const o = audioCtx.createOscillator();
+  const g2 = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(80, t);
+  o.frequency.exponentialRampToValueAtTime(30, t + 0.25);
+  g2.gain.setValueAtTime(0.35, t);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+  o.connect(g2); g2.connect(audioCtx.destination);
+  o.start(); o.stop(t + 0.25);
+}
+
+function playLaneSwitch() {
+  ensureAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(450, audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.05);
+  g.gain.setValueAtTime(0.06, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.06);
+}
+
+
+// ── Constants ──
+const LANE_WIDTH = 3;
+const LANES = [-LANE_WIDTH, 0, LANE_WIDTH];
+const INITIAL_SPEED = 12;
+const MAX_SPEED = 35;
+const SPEED_INCREASE = 0.3; // per second
+const SPAWN_DISTANCE = 80;
+const DESPAWN_DISTANCE = -15;
+const OBSTACLE_POOL_SIZE = 20;
+const SNOWBALL_POOL_SIZE = 15;
+const JUMP_VELOCITY = 10;
+const GRAVITY = 25;
+const LANE_LERP_SPEED = 10;
+const ROLL_DURATION = 0.35; // seconds
+const SLAM_DOWN_SPEED = 30; // fast fall when pressing down mid-air
+
+// ── State ──
+let state = 'start'; // start | transition | playing | over
+let transitionProgress = 0; // 0..1 for camera transition
+let currentLane = 1; // 0,1,2 index into LANES
+let targetX = 0;
+let speed = INITIAL_SPEED;
+let snowballCount = 0;
+let distanceTraveled = 0;
+let jumpVelocity = 0;
+let isJumping = false;
+let isRolling = false;
+let rollTimer = 0;
+let nextObstacleSpawn = 20;
+let nextSnowballSpawn = 10;
+
+// ── DOM refs ──
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over-screen');
+const scoreDisplay = document.getElementById('score-display');
+const snowballScoreEl = document.getElementById('snowball-score');
+const distanceScoreEl = document.getElementById('distance-score');
+const totalScoreEl = document.getElementById('total-score');
+const finalScoreText = document.getElementById('final-score-text');
+
+// ── Three.js Setup ──
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2a3a4f);
+scene.fog = new THREE.Fog(0x4a6080, 25, 85);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+// Menu camera: side view of the penguin
+const MENU_CAM_POS = new THREE.Vector3(6, 2.5, 1); // overwritten on transition start
+const MENU_CAM_TARGET = new THREE.Vector3(0, 1.2, 0); // overwritten on transition start
+const GAME_CAM_POS = new THREE.Vector3(0, 10, -8);
+const GAME_CAM_TARGET = new THREE.Vector3(0, 0, 15);
+camera.position.copy(MENU_CAM_POS);
+camera.lookAt(MENU_CAM_TARGET);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+// ── Lighting (stormy arctic) ──
+const ambientLight = new THREE.AmbientLight(0x6688aa, 0.8);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xaaccee, 1.0);
+dirLight.position.set(5, 15, -5);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(1024, 1024);
+dirLight.shadow.camera.near = 1;
+dirLight.shadow.camera.far = 60;
+dirLight.shadow.camera.left = -20;
+dirLight.shadow.camera.right = 20;
+dirLight.shadow.camera.top = 30;
+dirLight.shadow.camera.bottom = -10;
+scene.add(dirLight);
+
+// Subtle blue fill light from below (water reflection)
+const fillLight = new THREE.DirectionalLight(0x4488bb, 0.3);
+fillLight.position.set(0, -2, 10);
+scene.add(fillLight);
+
+// ── Iceberg Ground (running surface) ──
+const icebergWidth = 10;
+const groundGeo = new THREE.PlaneGeometry(icebergWidth, 200, 20, 1);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0xd8eaf5,
+  roughness: 0.4,
+  metalness: 0.1,
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(0, 0, 60);
+ground.receiveShadow = true;
+scene.add(ground);
+
+const ground2 = ground.clone();
+ground2.position.set(0, 0, 260);
+ground2.receiveShadow = true;
+scene.add(ground2);
+
+// Iceberg edges — irregular ice walls along the sides of the path
+function createIceEdge(side) {
+  const group = new THREE.Group();
+  const iceMat = new THREE.MeshStandardMaterial({ color: 0xc0ddef, roughness: 0.3, metalness: 0.05 });
+  const snowMat = new THREE.MeshStandardMaterial({ color: 0xe8f0f8, roughness: 0.8 });
+  const xBase = side * (icebergWidth / 2);
+
+  for (let z = -10; z < 200; z += 2 + Math.random() * 3) {
+    // Ice chunk
+    const w = 0.8 + Math.random() * 1.5;
+    const h = 0.3 + Math.random() * 0.8;
+    const d = 1.5 + Math.random() * 2;
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const mesh = new THREE.Mesh(geo, Math.random() > 0.5 ? iceMat : snowMat);
+    mesh.position.set(xBase + side * (w * 0.3), h * 0.3, z);
+    mesh.rotation.y = (Math.random() - 0.5) * 0.3;
+    mesh.castShadow = true;
+    group.add(mesh);
+
+    // Occasional taller ice spike
+    if (Math.random() > 0.6) {
+      const spikeH = 0.5 + Math.random() * 1.2;
+      const spikeGeo = new THREE.ConeGeometry(0.2 + Math.random() * 0.3, spikeH, 5);
+      const spike = new THREE.Mesh(spikeGeo, iceMat);
+      spike.position.set(xBase + side * (0.5 + Math.random() * 0.8), spikeH * 0.5, z + Math.random() * 2);
+      spike.rotation.z = (Math.random() - 0.5) * 0.2;
+      group.add(spike);
+    }
+  }
+  return group;
+}
+
+const iceEdgeLeft1 = createIceEdge(-1);
+iceEdgeLeft1.position.z = 0;
+scene.add(iceEdgeLeft1);
+const iceEdgeRight1 = createIceEdge(1);
+iceEdgeRight1.position.z = 0;
+scene.add(iceEdgeRight1);
+
+const iceEdgeLeft2 = createIceEdge(-1);
+iceEdgeLeft2.position.z = 200;
+scene.add(iceEdgeLeft2);
+const iceEdgeRight2 = createIceEdge(1);
+iceEdgeRight2.position.z = 200;
+scene.add(iceEdgeRight2);
+
+// ── Ocean Water ──
+const waterGeo = new THREE.PlaneGeometry(200, 200);
+const waterMat = new THREE.MeshStandardMaterial({
+  color: 0x1a4466,
+  roughness: 0.2,
+  metalness: 0.4,
+  transparent: true,
+  opacity: 0.85,
+});
+const waterLeft = new THREE.Mesh(waterGeo, waterMat);
+waterLeft.rotation.x = -Math.PI / 2;
+waterLeft.position.set(-105, -0.8, 60);
+scene.add(waterLeft);
+
+const waterRight = new THREE.Mesh(waterGeo, waterMat);
+waterRight.rotation.x = -Math.PI / 2;
+waterRight.position.set(105, -0.8, 60);
+scene.add(waterRight);
+
+// Second set for scrolling
+const waterLeft2 = waterLeft.clone();
+waterLeft2.position.set(-105, -0.8, 260);
+scene.add(waterLeft2);
+const waterRight2 = waterRight.clone();
+waterRight2.position.set(105, -0.8, 260);
+scene.add(waterRight2);
+
+// ── Floating Icebergs (decorative, on both sides) ──
+const floatingIcebergs = [];
+const ICEBERG_POOL_SIZE = 16;
+
+function createFloatingIceberg() {
+  const group = new THREE.Group();
+  const iceMat = new THREE.MeshStandardMaterial({ color: 0xb8d8ee, roughness: 0.3, metalness: 0.1 });
+  const snowTopMat = new THREE.MeshStandardMaterial({ color: 0xe0eef8, roughness: 0.7 });
+
+  // Main body — irregular shape from multiple boxes
+  const scale = 1.5 + Math.random() * 4;
+  const baseGeo = new THREE.BoxGeometry(scale, scale * 0.4, scale * 0.8);
+  const base = new THREE.Mesh(baseGeo, iceMat);
+  base.castShadow = true;
+  group.add(base);
+
+  // Top snow cap
+  const capGeo = new THREE.BoxGeometry(scale * 0.85, scale * 0.12, scale * 0.7);
+  const cap = new THREE.Mesh(capGeo, snowTopMat);
+  cap.position.y = scale * 0.22;
+  group.add(cap);
+
+  // Random ice peaks
+  const peakCount = 1 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < peakCount; i++) {
+    const pH = scale * (0.3 + Math.random() * 0.5);
+    const pGeo = new THREE.ConeGeometry(scale * 0.15, pH, 4 + Math.floor(Math.random() * 3));
+    const peak = new THREE.Mesh(pGeo, iceMat);
+    peak.position.set(
+      (Math.random() - 0.5) * scale * 0.5,
+      scale * 0.15 + pH * 0.4,
+      (Math.random() - 0.5) * scale * 0.3
+    );
+    peak.rotation.z = (Math.random() - 0.5) * 0.3;
+    group.add(peak);
+  }
+
+  // Submerged portion (darker blue, below waterline)
+  const subGeo = new THREE.BoxGeometry(scale * 1.1, scale * 0.5, scale * 0.9);
+  const subMat = new THREE.MeshStandardMaterial({ color: 0x1a5577, roughness: 0.5, transparent: true, opacity: 0.5 });
+  const sub = new THREE.Mesh(subGeo, subMat);
+  sub.position.y = -scale * 0.35;
+  group.add(sub);
+
+  group.userData.bobPhase = Math.random() * Math.PI * 2;
+  group.userData.bobSpeed = 0.5 + Math.random() * 0.5;
+  group.userData.baseY = -0.5;
+  group.visible = false;
+  scene.add(group);
+  return group;
+}
+
+const icebergPool = [];
+const activeIcebergs = [];
+for (let i = 0; i < ICEBERG_POOL_SIZE; i++) icebergPool.push(createFloatingIceberg());
+
+let nextIcebergZ = 15;
+
+function spawnFloatingIceberg() {
+  if (icebergPool.length === 0) return;
+  const berg = icebergPool.pop();
+  const side = Math.random() > 0.5 ? 1 : -1;
+  const xDist = icebergWidth / 2 + 5 + Math.random() * 25;
+  berg.position.set(side * xDist, -0.5, nextIcebergZ);
+  berg.rotation.y = Math.random() * Math.PI * 2;
+  berg.visible = true;
+  activeIcebergs.push(berg);
+  nextIcebergZ += 8 + Math.random() * 15;
+}
+
+// ── Side Decorations (ice formations, snow mounds) ──
+function createSideDecoration() {
+  const group = new THREE.Group();
+  const type = Math.floor(Math.random() * 3);
+
+  if (type === 0) {
+    // Snow mound
+    const moundMat = new THREE.MeshStandardMaterial({ color: 0xdde8f0, roughness: 0.8 });
+    const size = 0.8 + Math.random() * 1.5;
+    const moundGeo = new THREE.SphereGeometry(size, 8, 6);
+    const mound = new THREE.Mesh(moundGeo, moundMat);
+    mound.scale.set(1, 0.4, 1);
+    mound.position.y = size * 0.15;
+    mound.castShadow = true;
+    group.add(mound);
+  } else if (type === 1) {
+    // Ice crystal cluster
+    const crystalMat = new THREE.MeshStandardMaterial({ color: 0x88bbdd, roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.8 });
+    const count = 2 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < count; i++) {
+      const h = 0.5 + Math.random() * 2;
+      const cGeo = new THREE.ConeGeometry(0.1 + Math.random() * 0.15, h, 4);
+      const c = new THREE.Mesh(cGeo, crystalMat);
+      c.position.set((Math.random() - 0.5) * 0.8, h * 0.5, (Math.random() - 0.5) * 0.5);
+      c.rotation.z = (Math.random() - 0.5) * 0.3;
+      group.add(c);
+    }
+  } else {
+    // Frozen rock with snow
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.8 });
+    const snowMat = new THREE.MeshStandardMaterial({ color: 0xe0eaf2, roughness: 0.7 });
+    const rSize = 0.5 + Math.random() * 1;
+    const rGeo = new THREE.SphereGeometry(rSize, 5, 4);
+    const r = new THREE.Mesh(rGeo, rockMat);
+    r.scale.set(1, 0.6, 0.8);
+    r.position.y = rSize * 0.25;
+    group.add(r);
+    const sGeo = new THREE.SphereGeometry(rSize * 0.7, 5, 3);
+    const s = new THREE.Mesh(sGeo, snowMat);
+    s.scale.set(1, 0.25, 0.8);
+    s.position.y = rSize * 0.5;
+    group.add(s);
+  }
+
+  group.visible = false;
+  scene.add(group);
+  return group;
+}
+
+const sideDecoPool = [];
+const activeSideDecos = [];
+const SIDE_DECO_POOL = 30;
+for (let i = 0; i < SIDE_DECO_POOL; i++) sideDecoPool.push(createSideDecoration());
+
+let nextDecoZ = 5;
+
+function spawnSideDecoration() {
+  if (sideDecoPool.length === 0) return;
+  const deco = sideDecoPool.pop();
+  const side = Math.random() > 0.5 ? 1 : -1;
+  const xDist = icebergWidth / 2 - 0.5 + Math.random() * 2;
+  deco.position.set(side * xDist, 0, nextDecoZ);
+  deco.rotation.y = Math.random() * Math.PI * 2;
+  deco.visible = true;
+  activeSideDecos.push(deco);
+  nextDecoZ += 3 + Math.random() * 5;
+}
+
+// Lane dividers (subtle ice cracks)
+const dividerMat = new THREE.MeshBasicMaterial({ color: 0x8ab0cc, transparent: true, opacity: 0.3 });
+const laneDividers = [];
+for (let i = -1; i <= 1; i += 2) {
+  const x = i * (LANE_WIDTH / 2);
+  for (let tileIdx = 0; tileIdx < 2; tileIdx++) {
+    const divGeo = new THREE.PlaneGeometry(0.06, 200);
+    const divider = new THREE.Mesh(divGeo, dividerMat);
+    divider.rotation.x = -Math.PI / 2;
+    divider.position.set(x, 0.01, 60 + tileIdx * 200);
+    scene.add(divider);
+    laneDividers.push(divider);
+  }
+}
+
+// ── Build Penguin ──
+function createPenguin() {
+  const group = new THREE.Group();
+
+  // Body
+  const bodyGeo = new THREE.SphereGeometry(0.6, 16, 16);
+  bodyGeo.scale(1, 1.2, 0.9);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 1.0;
+  body.castShadow = true;
+  group.add(body);
+
+  // Belly
+  const bellyGeo = new THREE.SphereGeometry(0.45, 16, 16);
+  bellyGeo.scale(1, 1.1, 0.7);
+  const bellyMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5 });
+  const belly = new THREE.Mesh(bellyGeo, bellyMat);
+  belly.position.set(0, 0.95, 0.2);
+  group.add(belly);
+
+  // Head
+  const headGeo = new THREE.SphereGeometry(0.4, 16, 16);
+  const headMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = 1.85;
+  head.castShadow = true;
+  group.add(head);
+
+  // Eyes
+  const eyeGeo = new THREE.SphereGeometry(0.08, 8, 8);
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+  const pupilGeo = new THREE.SphereGeometry(0.04, 8, 8);
+  const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+  for (let side of [-1, 1]) {
+    const eye = new THREE.Mesh(eyeGeo, eyeMat);
+    eye.position.set(side * 0.15, 1.92, 0.32);
+    group.add(eye);
+    const pupil = new THREE.Mesh(pupilGeo, pupilMat);
+    pupil.position.set(side * 0.15, 1.92, 0.38);
+    group.add(pupil);
+  }
+
+  // Beak
+  const beakGeo = new THREE.ConeGeometry(0.1, 0.25, 8);
+  const beakMat = new THREE.MeshStandardMaterial({ color: 0xff8c00 });
+  const beak = new THREE.Mesh(beakGeo, beakMat);
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(0, 1.8, 0.5);
+  group.add(beak);
+
+  // Legs (each leg is a group: thigh pivot at hip, then shin, then foot)
+  const legMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e });
+  const footMat = new THREE.MeshStandardMaterial({ color: 0xff8c00 });
+  for (let side of [-1, 1]) {
+    const legGroup = new THREE.Group();
+    legGroup.position.set(side * 0.22, 0.45, 0);
+    legGroup.name = side === -1 ? 'leftLeg' : 'rightLeg';
+
+    // Thigh
+    const thighGeo = new THREE.CylinderGeometry(0.08, 0.07, 0.3, 8);
+    const thigh = new THREE.Mesh(thighGeo, legMat);
+    thigh.position.y = -0.15;
+    legGroup.add(thigh);
+
+    // Shin / lower leg
+    const shinGeo = new THREE.CylinderGeometry(0.07, 0.06, 0.2, 8);
+    const shin = new THREE.Mesh(shinGeo, legMat);
+    shin.position.y = -0.38;
+    legGroup.add(shin);
+
+    // Foot
+    const footGeo = new THREE.BoxGeometry(0.22, 0.06, 0.32);
+    const foot = new THREE.Mesh(footGeo, footMat);
+    foot.position.set(0, -0.45, 0.06);
+    legGroup.add(foot);
+
+    group.add(legGroup);
+  }
+
+  // Wings
+  const wingGeo = new THREE.BoxGeometry(0.15, 0.6, 0.3);
+  const wingMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e });
+  for (let side of [-1, 1]) {
+    const wing = new THREE.Mesh(wingGeo, wingMat);
+    wing.position.set(side * 0.65, 1.0, 0);
+    wing.rotation.z = side * 0.2;
+    wing.name = side === -1 ? 'leftWing' : 'rightWing';
+    group.add(wing);
+  }
+
+  return group;
+}
+
+const penguin = createPenguin();
+penguin.position.set(0, 0, 0);
+scene.add(penguin);
+
+// ── Object Pools ──
+const obstaclePool = [];
+const activeObstacles = [];
+const rockPool = [];
+const activeRocks = [];
+const ROCK_POOL_SIZE = 15;
+const barrierPool = [];
+const activeBarriers = [];
+const BARRIER_POOL_SIZE = 12;
+const giantPool = [];
+const activeGiants = [];
+const GIANT_POOL_SIZE = 8;
+const rampPool = [];
+const activeRamps = [];
+const RAMP_POOL_SIZE = 10;
+const snowballPool = [];
+const activeSnowballs = [];
+
+function createTree() {
+  const group = new THREE.Group();
+
+  // Trunk
+  const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.2, 8);
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e });
+  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+  trunk.position.y = 0.6;
+  trunk.castShadow = true;
+  group.add(trunk);
+
+  // Foliage layers
+  const foliageMat = new THREE.MeshStandardMaterial({ color: 0x2d6a30 });
+  const layers = [
+    { radius: 1.0, height: 1.5, y: 1.8 },
+    { radius: 0.75, height: 1.2, y: 2.8 },
+    { radius: 0.5, height: 1.0, y: 3.5 },
+  ];
+  for (const l of layers) {
+    const coneGeo = new THREE.ConeGeometry(l.radius, l.height, 8);
+    const cone = new THREE.Mesh(coneGeo, foliageMat);
+    cone.position.y = l.y;
+    cone.castShadow = true;
+    group.add(cone);
+  }
+
+  // Snow caps on foliage
+  const snowMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+  const snowLayers = [
+    { radius: 0.85, height: 0.2, y: 2.55 },
+    { radius: 0.6, height: 0.15, y: 3.4 },
+    { radius: 0.35, height: 0.12, y: 4.0 },
+  ];
+  for (const s of snowLayers) {
+    const snowGeo = new THREE.CylinderGeometry(s.radius * 0.3, s.radius, s.height, 8);
+    const snow = new THREE.Mesh(snowGeo, snowMat);
+    snow.position.y = s.y;
+    group.add(snow);
+  }
+
+  group.visible = false;
+  scene.add(group);
+  return group;
+}
+
+function createRock() {
+  const group = new THREE.Group();
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x7a7a7a, roughness: 0.85 });
+
+  // Main rock body — flattened irregular shape
+  const mainGeo = new THREE.SphereGeometry(0.6, 6, 5);
+  const main = new THREE.Mesh(mainGeo, rockMat);
+  main.scale.set(1.3, 0.5, 1.0);
+  main.position.y = 0.3;
+  main.castShadow = true;
+  group.add(main);
+
+  // Small bump on top
+  const bumpGeo = new THREE.SphereGeometry(0.3, 5, 4);
+  const bump = new THREE.Mesh(bumpGeo, rockMat);
+  bump.scale.set(1.0, 0.6, 0.8);
+  bump.position.set(0.15, 0.5, 0.05);
+  bump.castShadow = true;
+  group.add(bump);
+
+  // Snow dusting on top
+  const snowGeo = new THREE.SphereGeometry(0.35, 6, 4);
+  const snowMat = new THREE.MeshStandardMaterial({ color: 0xeeeef4, roughness: 0.9 });
+  const snow = new THREE.Mesh(snowGeo, snowMat);
+  snow.scale.set(1.1, 0.2, 0.9);
+  snow.position.set(0, 0.55, 0);
+  group.add(snow);
+
+  group.visible = false;
+  scene.add(group);
+  return group;
+}
+
+function createBarrier() {
+  const group = new THREE.Group();
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.8 });
+  const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x6B3A1B, roughness: 0.85 });
+
+  // Left post
+  const postGeo = new THREE.CylinderGeometry(0.1, 0.12, 2.2, 6);
+  const leftPost = new THREE.Mesh(postGeo, darkWoodMat);
+  leftPost.position.set(-0.9, 1.1, 0);
+  leftPost.castShadow = true;
+  group.add(leftPost);
+
+  // Right post
+  const rightPost = new THREE.Mesh(postGeo, darkWoodMat);
+  rightPost.position.set(0.9, 1.1, 0);
+  rightPost.castShadow = true;
+  group.add(rightPost);
+
+  // Horizontal crossbar (the part you duck under)
+  const barGeo = new THREE.BoxGeometry(2.0, 0.25, 0.2);
+  const bar = new THREE.Mesh(barGeo, woodMat);
+  bar.position.set(0, 1.55, 0);
+  bar.castShadow = true;
+  group.add(bar);
+
+  // Second lower crossbar for visual detail
+  const bar2Geo = new THREE.BoxGeometry(2.0, 0.15, 0.15);
+  const bar2 = new THREE.Mesh(bar2Geo, woodMat);
+  bar2.position.set(0, 1.2, 0);
+  bar2.castShadow = true;
+  group.add(bar2);
+
+  // Warning sign (small plank on the crossbar)
+  const signGeo = new THREE.BoxGeometry(0.5, 0.35, 0.05);
+  const signMat = new THREE.MeshStandardMaterial({ color: 0xddcc44 });
+  const sign = new THREE.Mesh(signGeo, signMat);
+  sign.position.set(0, 1.8, 0.13);
+  group.add(sign);
+
+  group.visible = false;
+  scene.add(group);
+  return group;
+}
+
+function createGiantSnowball() {
+  const group = new THREE.Group();
+  // Main huge snowball
+  const mainGeo = new THREE.SphereGeometry(1.8, 14, 12);
+  const mainMat = new THREE.MeshStandardMaterial({ color: 0xeef2f6, roughness: 0.7 });
+  const main = new THREE.Mesh(mainGeo, mainMat);
+  main.position.y = 1.8;
+  main.castShadow = true;
+  group.add(main);
+  // Stacked medium ball
+  const midGeo = new THREE.SphereGeometry(1.2, 12, 10);
+  const mid = new THREE.Mesh(midGeo, mainMat);
+  mid.position.y = 4.2;
+  mid.castShadow = true;
+  group.add(mid);
+  // Small top ball
+  const topGeo = new THREE.SphereGeometry(0.7, 10, 8);
+  const top = new THREE.Mesh(topGeo, mainMat);
+  top.position.y = 5.8;
+  top.castShadow = true;
+  group.add(top);
+  // Stick arms on middle ball
+  const stickMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e });
+  for (let side of [-1, 1]) {
+    const stickGeo = new THREE.CylinderGeometry(0.04, 0.06, 1.2, 5);
+    const stick = new THREE.Mesh(stickGeo, stickMat);
+    stick.position.set(side * 1.3, 4.3, 0);
+    stick.rotation.z = side * 0.6;
+    group.add(stick);
+  }
+  // Coal eyes + carrot nose on top ball
+  const coalMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+  for (let side of [-1, 1]) {
+    const eyeGeo = new THREE.SphereGeometry(0.1, 6, 6);
+    const eye = new THREE.Mesh(eyeGeo, coalMat);
+    eye.position.set(side * 0.25, 6.0, 0.6);
+    group.add(eye);
+  }
+  const noseGeo = new THREE.ConeGeometry(0.1, 0.5, 6);
+  const noseMat = new THREE.MeshStandardMaterial({ color: 0xff6600 });
+  const nose = new THREE.Mesh(noseGeo, noseMat);
+  nose.rotation.x = Math.PI / 2;
+  nose.position.set(0, 5.8, 0.85);
+  group.add(nose);
+
+  group.visible = false;
+  scene.add(group);
+  return group;
+}
+
+function createSnowRamp() {
+  const group = new THREE.Group();
+  // Ramp base — long triangular wedge shape made from a box with rotation
+  const rampMat = new THREE.MeshStandardMaterial({ color: 0xdde4ee, roughness: 0.8 });
+
+  // Use a custom shape: extruded triangle for the ramp
+  const shape = new THREE.Shape();
+  shape.moveTo(-1.2, 0);
+  shape.lineTo(1.2, 0);
+  shape.lineTo(1.2, 1.8);
+  shape.lineTo(-1.2, 1.8);
+  shape.closePath();
+
+  // Simpler approach: box tilted as a ramp, with a flat top bridge
+  // Left snow wall
+  const wallGeo = new THREE.BoxGeometry(0.4, 2.2, 1.5);
+  const leftWall = new THREE.Mesh(wallGeo, rampMat);
+  leftWall.position.set(-1.0, 1.1, 0);
+  leftWall.castShadow = true;
+  group.add(leftWall);
+  // Right snow wall
+  const rightWall = new THREE.Mesh(wallGeo, rampMat);
+  rightWall.position.set(1.0, 1.1, 0);
+  rightWall.castShadow = true;
+  group.add(rightWall);
+  // Top snow bridge connecting them (the part you roll under)
+  const bridgeGeo = new THREE.BoxGeometry(2.4, 0.5, 1.5);
+  const bridgeMat = new THREE.MeshStandardMaterial({ color: 0xd0dae8, roughness: 0.75 });
+  const bridge = new THREE.Mesh(bridgeGeo, bridgeMat);
+  bridge.position.set(0, 2.0, 0);
+  bridge.castShadow = true;
+  group.add(bridge);
+  // Snow pile on top
+  const pileGeo = new THREE.SphereGeometry(0.8, 8, 6);
+  const pile = new THREE.Mesh(pileGeo, rampMat);
+  pile.scale.set(1.4, 0.35, 1.0);
+  pile.position.set(0, 2.4, 0);
+  group.add(pile);
+  // Icicles hanging from bridge
+  const icicleMat = new THREE.MeshStandardMaterial({ color: 0xaaccee, transparent: true, opacity: 0.7 });
+  for (let x = -0.8; x <= 0.8; x += 0.4) {
+    const icicleGeo = new THREE.ConeGeometry(0.04, 0.25 + Math.random() * 0.15, 4);
+    const icicle = new THREE.Mesh(icicleGeo, icicleMat);
+    icicle.position.set(x, 1.65, 0.7);
+    icicle.rotation.x = Math.PI;
+    group.add(icicle);
+  }
+
+  group.visible = false;
+  scene.add(group);
+  return group;
+}
+
+function createSnowball() {
+  const group = new THREE.Group();
+  const geo = new THREE.SphereGeometry(0.35, 12, 12);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0x88bbff,
+    emissiveIntensity: 0.15,
+    roughness: 0.3,
+    metalness: 0.1,
+  });
+  const sphere = new THREE.Mesh(geo, mat);
+  sphere.position.y = 0.8;
+  sphere.castShadow = true;
+  group.add(sphere);
+
+  // Sparkle ring
+  const ringGeo = new THREE.TorusGeometry(0.5, 0.03, 8, 24);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.6 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.position.y = 0.8;
+  ring.name = 'ring';
+  group.add(ring);
+
+  group.visible = false;
+  scene.add(group);
+  return group;
+}
+
+// Pre-populate pools
+for (let i = 0; i < OBSTACLE_POOL_SIZE; i++) obstaclePool.push(createTree());
+for (let i = 0; i < ROCK_POOL_SIZE; i++) rockPool.push(createRock());
+for (let i = 0; i < BARRIER_POOL_SIZE; i++) barrierPool.push(createBarrier());
+for (let i = 0; i < GIANT_POOL_SIZE; i++) giantPool.push(createGiantSnowball());
+for (let i = 0; i < RAMP_POOL_SIZE; i++) rampPool.push(createSnowRamp());
+for (let i = 0; i < SNOWBALL_POOL_SIZE; i++) snowballPool.push(createSnowball());
+
+// ── Particle system for snowball collection ──
+const particleGeo = new THREE.BufferGeometry();
+const particleCount = 30;
+const particlePositions = new Float32Array(particleCount * 3);
+const particleSizes = new Float32Array(particleCount);
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+particleGeo.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+const particleMat = new THREE.PointsMaterial({
+  color: 0xaaddff,
+  size: 0.15,
+  transparent: true,
+  opacity: 0.8,
+  sizeAttenuation: true,
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+particles.visible = false;
+scene.add(particles);
+
+let particleVelocities = [];
+let particleLife = 0;
+
+function spawnParticles(position) {
+  particleVelocities = [];
+  for (let i = 0; i < particleCount; i++) {
+    particlePositions[i * 3] = position.x;
+    particlePositions[i * 3 + 1] = position.y + 0.8;
+    particlePositions[i * 3 + 2] = position.z;
+    particleSizes[i] = 0.1 + Math.random() * 0.15;
+    particleVelocities.push({
+      x: (Math.random() - 0.5) * 4,
+      y: Math.random() * 4 + 1,
+      z: (Math.random() - 0.5) * 4,
+    });
+  }
+  particleGeo.attributes.position.needsUpdate = true;
+  particleGeo.attributes.size.needsUpdate = true;
+  particles.visible = true;
+  particleMat.opacity = 0.8;
+  particleLife = 0.6;
+}
+
+// ── Blizzard Snow Particles (subtle) ──
+const bgSnowCount = 400;
+const bgSnowGeo = new THREE.BufferGeometry();
+const bgSnowPos = new Float32Array(bgSnowCount * 3);
+const bgSnowVel = [];
+for (let i = 0; i < bgSnowCount; i++) {
+  bgSnowPos[i * 3] = (Math.random() - 0.5) * 60;
+  bgSnowPos[i * 3 + 1] = Math.random() * 25;
+  bgSnowPos[i * 3 + 2] = Math.random() * 90 - 10;
+  bgSnowVel.push({
+    x: -(Math.random() * 2 + 0.8),
+    y: -(Math.random() * 2 + 1.2),
+    z: (Math.random() - 0.5) * 1.0,
+  });
+}
+bgSnowGeo.setAttribute('position', new THREE.BufferAttribute(bgSnowPos, 3));
+const bgSnowMat = new THREE.PointsMaterial({
+  color: 0xb0c8e0,
+  size: 0.07,
+  transparent: true,
+  opacity: 0.3,
+  sizeAttenuation: true,
+});
+const bgSnow = new THREE.Points(bgSnowGeo, bgSnowMat);
+scene.add(bgSnow);
+
+// Sparse foreground snow flakes for depth
+const fgSnowCount = 80;
+const fgSnowGeo = new THREE.BufferGeometry();
+const fgSnowPos = new Float32Array(fgSnowCount * 3);
+const fgSnowVel = [];
+for (let i = 0; i < fgSnowCount; i++) {
+  fgSnowPos[i * 3] = (Math.random() - 0.5) * 20;
+  fgSnowPos[i * 3 + 1] = Math.random() * 15;
+  fgSnowPos[i * 3 + 2] = Math.random() * 30 - 15;
+  fgSnowVel.push({
+    x: -(Math.random() * 3 + 1.5),
+    y: -(Math.random() * 1.5 + 0.8),
+    z: (Math.random() - 0.5) * 1.5,
+  });
+}
+fgSnowGeo.setAttribute('position', new THREE.BufferAttribute(fgSnowPos, 3));
+const fgSnowMat = new THREE.PointsMaterial({
+  color: 0xc0d8ee,
+  size: 0.15,
+  transparent: true,
+  opacity: 0.2,
+  sizeAttenuation: true,
+});
+const fgSnow = new THREE.Points(fgSnowGeo, fgSnowMat);
+scene.add(fgSnow);
+
+// ── Pattern-Based Spawning (Subway Surfers style) ──
+// Each pattern is a sequence of "rows". Each row is [lane0, lane1, lane2].
+// Cell values: null = empty, 'tree' = full blocker, 'rock' = jump-over,
+//              'barrier' = roll-under, 'ramp' = snow ramp (roll-under),
+//              'giant' = giant snowball (tall blocker, must dodge)
+// Rule: every row must have at least one escapable lane (empty, rock, or barrier).
+// 'gap' between rows in Z units.
+
+// Difficulty tiers: easy patterns first, harder ones added over time
+const PATTERNS_EASY = [
+  // Single tree in one lane
+  { rows: [['tree', null, null]], gap: 0 },
+  { rows: [[null, 'tree', null]], gap: 0 },
+  { rows: [[null, null, 'tree']], gap: 0 },
+  // Single rock (must jump)
+  { rows: [['rock', null, null]], gap: 0 },
+  { rows: [[null, 'rock', null]], gap: 0 },
+  { rows: [[null, null, 'rock']], gap: 0 },
+  // Single barrier (must roll)
+  { rows: [['barrier', null, null]], gap: 0 },
+  { rows: [[null, 'barrier', null]], gap: 0 },
+  { rows: [[null, null, 'barrier']], gap: 0 },
+];
+
+const PATTERNS_MEDIUM = [
+  // Two trees, one lane open
+  { rows: [['tree', 'tree', null]], gap: 0 },
+  { rows: [[null, 'tree', 'tree']], gap: 0 },
+  { rows: [['tree', null, 'tree']], gap: 0 },
+  // Tree + rock combo (dodge one lane, jump in another)
+  { rows: [['tree', 'rock', null]], gap: 0 },
+  { rows: [[null, 'rock', 'tree']], gap: 0 },
+  { rows: [['rock', null, 'tree']], gap: 0 },
+  // Tree + barrier (dodge or roll)
+  { rows: [['tree', 'barrier', null]], gap: 0 },
+  { rows: [[null, 'barrier', 'tree']], gap: 0 },
+  { rows: [['barrier', null, 'tree']], gap: 0 },
+  // Staggered: two rows with offset obstacles (forces lane change)
+  { rows: [['tree', null, null], [null, null, 'tree']], gap: 6 },
+  { rows: [[null, null, 'tree'], ['tree', null, null]], gap: 6 },
+  { rows: [[null, 'tree', null], ['tree', null, null]], gap: 5 },
+  // Giant snowball in one lane
+  { rows: [['giant', null, null]], gap: 0 },
+  { rows: [[null, 'giant', null]], gap: 0 },
+  { rows: [[null, null, 'giant']], gap: 0 },
+  // Snow ramp (roll under)
+  { rows: [['ramp', null, null]], gap: 0 },
+  { rows: [[null, 'ramp', null]], gap: 0 },
+  { rows: [[null, null, 'ramp']], gap: 0 },
+  // Tree + ramp
+  { rows: [['tree', 'ramp', null]], gap: 0 },
+  { rows: [[null, 'ramp', 'tree']], gap: 0 },
+];
+
+const PATTERNS_HARD = [
+  // Two trees + rock in 3rd lane (must jump)
+  { rows: [['tree', 'tree', 'rock']], gap: 0 },
+  { rows: [['rock', 'tree', 'tree']], gap: 0 },
+  { rows: [['tree', 'rock', 'tree']], gap: 0 },
+  // Two trees + barrier (must roll)
+  { rows: [['tree', 'tree', 'barrier']], gap: 0 },
+  { rows: [['barrier', 'tree', 'tree']], gap: 0 },
+  { rows: [['tree', 'barrier', 'tree']], gap: 0 },
+  // Giant + tree (only one lane open)
+  { rows: [['giant', null, 'tree']], gap: 0 },
+  { rows: [['tree', null, 'giant']], gap: 0 },
+  { rows: [['giant', 'tree', null]], gap: 0 },
+  // Zigzag sequence: 3 rows forcing lane switches
+  { rows: [['tree', null, null], [null, 'tree', null], [null, null, 'tree']], gap: 5 },
+  { rows: [[null, null, 'tree'], [null, 'tree', null], ['tree', null, null]], gap: 5 },
+  // Rock wall + barrier (jump one row, roll the next)
+  { rows: [['rock', 'rock', null], [null, 'barrier', 'barrier']], gap: 5 },
+  { rows: [[null, 'rock', 'rock'], ['barrier', 'barrier', null]], gap: 5 },
+  // Giant + rock (dodge or jump)
+  { rows: [['giant', 'rock', null]], gap: 0 },
+  { rows: [[null, 'rock', 'giant']], gap: 0 },
+  // Corridor: forces you through a gap then obstacles
+  { rows: [['tree', null, 'tree'], [null, 'rock', null]], gap: 6 },
+  { rows: [['tree', null, 'tree'], [null, 'barrier', null]], gap: 6 },
+  // Two trees + ramp (must roll)
+  { rows: [['tree', 'tree', 'ramp']], gap: 0 },
+  { rows: [['ramp', 'tree', 'tree']], gap: 0 },
+  // Giant + ramp (dodge or roll)
+  { rows: [['giant', 'ramp', null]], gap: 0 },
+  { rows: [[null, 'ramp', 'giant']], gap: 0 },
+  // Ramp then rock (roll then jump)
+  { rows: [['ramp', 'ramp', null], [null, 'rock', 'rock']], gap: 5 },
+];
+
+// ── Sequential pattern spawning — dead simple, no overlaps possible ──
+// nextPatternZ is the ONLY thing that controls where the next pattern goes.
+// Each pattern advances it forward. Patterns are placed one after another
+// in a strict sequence with guaranteed gaps. No occupancy grid needed.
+const MIN_PATTERN_GAP = 10; // min Z gap between patterns (breathing room)
+const ROW_SPACING = 4.5;    // Z spacing between rows within a multi-row pattern
+
+let nextPatternZ = 25;
+
+function getAvailablePatterns() {
+  const pool = [...PATTERNS_EASY];
+  if (distanceTraveled > 60) pool.push(...PATTERNS_MEDIUM);
+  if (distanceTraveled > 200) pool.push(...PATTERNS_HARD);
+  return pool;
+}
+
+function placeObject(type, laneIdx, z) {
+  if (type === 'tree') {
+    if (obstaclePool.length === 0) return;
+    const obj = obstaclePool.pop();
+    obj.position.set(LANES[laneIdx], 0, z);
+    obj.visible = true;
+    obj.userData.lane = laneIdx;
+    activeObstacles.push(obj);
+  } else if (type === 'rock') {
+    if (rockPool.length === 0) return;
+    const obj = rockPool.pop();
+    obj.position.set(LANES[laneIdx], 0, z);
+    obj.visible = true;
+    obj.userData.lane = laneIdx;
+    activeRocks.push(obj);
+  } else if (type === 'barrier') {
+    if (barrierPool.length === 0) return;
+    const obj = barrierPool.pop();
+    obj.position.set(LANES[laneIdx], 0, z);
+    obj.visible = true;
+    obj.userData.lane = laneIdx;
+    activeBarriers.push(obj);
+  } else if (type === 'giant') {
+    if (giantPool.length === 0) return;
+    const obj = giantPool.pop();
+    obj.position.set(LANES[laneIdx], 0, z);
+    obj.visible = true;
+    obj.userData.lane = laneIdx;
+    activeGiants.push(obj);
+  } else if (type === 'ramp') {
+    if (rampPool.length === 0) return;
+    const obj = rampPool.pop();
+    obj.position.set(LANES[laneIdx], 0, z);
+    obj.visible = true;
+    obj.userData.lane = laneIdx;
+    activeRamps.push(obj);
+  }
+}
+
+function placeSnowball(laneIdx, z) {
+  if (snowballPool.length === 0) return;
+  const sb = snowballPool.pop();
+  sb.position.set(LANES[laneIdx], 0, z);
+  sb.visible = true;
+  sb.userData.lane = laneIdx;
+  sb.userData.collected = false;
+  sb.scale.set(1, 1, 1);
+  activeSnowballs.push(sb);
+}
+
+function spawnPattern() {
+  const pool = getAvailablePatterns();
+  const pattern = pool[Math.floor(Math.random() * pool.length)];
+
+  let endZ = nextPatternZ;
+  for (let r = 0; r < pattern.rows.length; r++) {
+    const row = pattern.rows[r];
+    const rowZ = nextPatternZ + r * (pattern.gap || ROW_SPACING);
+    endZ = rowZ;
+
+    // Place obstacles for this row
+    for (let l = 0; l < 3; l++) {
+      if (row[l] !== null) placeObject(row[l], l, rowZ);
+    }
+
+    // Place snowball in a safe (empty) lane
+    const safeLanes = [];
+    for (let l = 0; l < 3; l++) {
+      if (row[l] === null) safeLanes.push(l);
+    }
+    if (safeLanes.length > 0 && Math.random() > 0.4) {
+      const pick = safeLanes[Math.floor(Math.random() * safeLanes.length)];
+      placeSnowball(pick, rowZ);
+    }
+  }
+
+  // Advance nextPatternZ past this pattern with a gap
+  // Gap shrinks slightly with difficulty but never below 7
+  const difficultyGap = Math.max(7, MIN_PATTERN_GAP - distanceTraveled * 0.005);
+  nextPatternZ = endZ + difficultyGap + Math.random() * 3;
+
+  // Trail of snowballs after pattern sometimes
+  if (Math.random() > 0.6) {
+    const trailLane = Math.floor(Math.random() * 3);
+    for (let i = 1; i <= 3; i++) {
+      placeSnowball(trailLane, endZ + 2 * i);
+    }
+  }
+}
+
+// ── Collision ──
+const penguinBox = new THREE.Box3();
+const objectBox = new THREE.Box3();
+
+function checkCollisions() {
+  // Penguin bounding box — shorter when rolling
+  const penguinHeight = isRolling ? 0.6 : 2.0;
+  const penguinCenterY = penguin.position.y + penguinHeight / 2;
+  penguinBox.setFromCenterAndSize(
+    new THREE.Vector3(penguin.position.x, penguinCenterY, penguin.position.z),
+    new THREE.Vector3(0.8, penguinHeight, 0.8)
+  );
+
+  // Trees — forgiving hitbox (narrower trunk area, shallow Z)
+  for (const tree of activeObstacles) {
+    objectBox.setFromCenterAndSize(
+      new THREE.Vector3(tree.position.x, 1.2, tree.position.z),
+      new THREE.Vector3(0.6, 2.4, 0.5)
+    );
+    if (penguinBox.intersectsBox(objectBox)) {
+      playCrash(); gameOver(); return;
+    }
+  }
+
+  // Giant snowballs — big but fair
+  for (const g of activeGiants) {
+    objectBox.setFromCenterAndSize(
+      new THREE.Vector3(g.position.x, 2.0, g.position.z),
+      new THREE.Vector3(2.2, 4.0, 1.5)
+    );
+    if (penguinBox.intersectsBox(objectBox)) {
+      playCrash(); gameOver(); return;
+    }
+  }
+
+  // Rocks (short — jumpable)
+  for (const rock of activeRocks) {
+    objectBox.setFromCenterAndSize(
+      new THREE.Vector3(rock.position.x, 0.35, rock.position.z),
+      new THREE.Vector3(1.0, 0.7, 0.5)
+    );
+    if (penguinBox.intersectsBox(objectBox)) {
+      playCrash(); gameOver(); return;
+    }
+  }
+
+  // Barriers (elevated — roll under them)
+  for (const barrier of activeBarriers) {
+    objectBox.setFromCenterAndSize(
+      new THREE.Vector3(barrier.position.x, 1.6, barrier.position.z),
+      new THREE.Vector3(1.6, 1.2, 0.4)
+    );
+    if (penguinBox.intersectsBox(objectBox)) {
+      playCrash(); gameOver(); return;
+    }
+  }
+
+  // Snow ramps (elevated — roll under them)
+  for (const ramp of activeRamps) {
+    objectBox.setFromCenterAndSize(
+      new THREE.Vector3(ramp.position.x, 1.8, ramp.position.z),
+      new THREE.Vector3(1.8, 1.2, 1.0)
+    );
+    if (penguinBox.intersectsBox(objectBox)) {
+      playCrash(); gameOver(); return;
+    }
+  }
+
+  // Snowballs
+  for (const sb of activeSnowballs) {
+    if (sb.userData.collected) continue;
+    objectBox.setFromCenterAndSize(
+      new THREE.Vector3(sb.position.x, 0.8, sb.position.z),
+      new THREE.Vector3(0.8, 0.8, 0.8)
+    );
+    if (penguinBox.intersectsBox(objectBox)) {
+      sb.userData.collected = true;
+      snowballCount++;
+      playCollect();
+      spawnParticles(sb.position);
+    }
+  }
+}
+
+// ── Game State ──
+function beginTransition() {
+  // Triggered by start button — begins camera transition
+  // Capture current orbiting camera as transition start
+  MENU_CAM_POS.copy(camera.position);
+  MENU_CAM_TARGET.set(0, 1.2, 0);
+  state = 'transition';
+  transitionProgress = 0;
+  startScreen.style.opacity = '0';
+
+  // Reset game state
+  currentLane = 1;
+  targetX = LANES[1];
+  penguin.position.set(0, 0, 0);
+  speed = INITIAL_SPEED;
+  snowballCount = 0;
+  distanceTraveled = 0;
+  jumpVelocity = 0;
+  isJumping = false;
+  isRolling = false;
+  rollTimer = 0;
+  penguin.scale.set(1, 1, 1);
+  penguin.rotation.x = 0;
+  nextObstacleSpawn = 20;
+  nextSnowballSpawn = 10;
+
+  // Clear active objects
+  for (const t of activeObstacles) { t.visible = false; obstaclePool.push(t); }
+  activeObstacles.length = 0;
+  for (const r of activeRocks) { r.visible = false; rockPool.push(r); }
+  activeRocks.length = 0;
+  for (const b of activeBarriers) { b.visible = false; barrierPool.push(b); }
+  activeBarriers.length = 0;
+  for (const g of activeGiants) { g.visible = false; giantPool.push(g); }
+  activeGiants.length = 0;
+  for (const rp of activeRamps) { rp.visible = false; rampPool.push(rp); }
+  activeRamps.length = 0;
+  for (const s of activeSnowballs) { s.visible = false; snowballPool.push(s); }
+  activeSnowballs.length = 0;
+
+  // Reset ground/water/edge positions
+  ground.position.set(0, 0, 60);
+  ground2.position.set(0, 0, 260);
+  waterLeft.position.set(-105, -0.8, 60);
+  waterRight.position.set(105, -0.8, 60);
+  waterLeft2.position.set(-105, -0.8, 260);
+  waterRight2.position.set(105, -0.8, 260);
+  iceEdgeLeft1.position.z = 0;
+  iceEdgeRight1.position.z = 0;
+  iceEdgeLeft2.position.z = 200;
+  iceEdgeRight2.position.z = 200;
+  for (let i = 0; i < laneDividers.length; i++) {
+    laneDividers[i].position.z = 60 + Math.floor(i / 2) * 200;
+  }
+
+  // Clear floating icebergs & side decorations
+  for (const b of activeIcebergs) { b.visible = false; icebergPool.push(b); }
+  activeIcebergs.length = 0;
+  for (const d of activeSideDecos) { d.visible = false; sideDecoPool.push(d); }
+  activeSideDecos.length = 0;
+
+  // Pre-spawn patterns ahead of the player
+  nextPatternZ = 25;
+  while (nextPatternZ < SPAWN_DISTANCE) {
+    spawnPattern();
+  }
+
+  // Pre-spawn environment
+  nextIcebergZ = 15;
+  while (nextIcebergZ < SPAWN_DISTANCE + 30) {
+    spawnFloatingIceberg();
+  }
+  nextDecoZ = 5;
+  while (nextDecoZ < SPAWN_DISTANCE) {
+    spawnSideDecoration();
+  }
+}
+
+function finishTransition() {
+  state = 'playing';
+  camera.position.copy(GAME_CAM_POS);
+  camera.lookAt(GAME_CAM_TARGET);
+  startScreen.style.display = 'none';
+  startScreen.style.opacity = '1';
+  gameOverScreen.style.display = 'none';
+  scoreDisplay.style.display = 'block';
+}
+
+function gameOver() {
+  state = 'over';
+  const totalScore = snowballCount * 10 + Math.floor(distanceTraveled);
+  finalScoreText.textContent = `Snowballs: ${snowballCount}  |  Distance: ${Math.floor(distanceTraveled)}m  |  Score: ${totalScore}`;
+
+  if (isTopFiveScore(totalScore)) {
+    // Show name prompt
+    document.getElementById('name-modal-score').textContent = `Score: ${totalScore.toLocaleString()}`;
+    document.getElementById('name-input').value = '';
+    document.getElementById('name-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('name-input').focus(), 100);
+
+    document.getElementById('name-submit').onclick = async () => {
+      const name = document.getElementById('name-input').value.trim() || 'Anonymous';
+      document.getElementById('name-modal').style.display = 'none';
+      await submitScore(name, totalScore);
+      gameOverScreen.style.display = 'flex';
+    };
+    document.getElementById('name-skip').onclick = () => {
+      document.getElementById('name-modal').style.display = 'none';
+      gameOverScreen.style.display = 'flex';
+      fetchLeaderboard();
+    };
+    // Allow Enter to submit
+    document.getElementById('name-input').onkeydown = (e) => {
+      if (e.key === 'Enter') document.getElementById('name-submit').click();
+    };
+  } else {
+    gameOverScreen.style.display = 'flex';
+    fetchLeaderboard();
+  }
+}
+
+// ── Input ──
+const keys = {};
+
+// Buttons only for start/restart
+document.getElementById('start-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (state === 'start') beginTransition();
+});
+document.getElementById('restart-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (state === 'over') {
+    // Skip camera transition on restart (already in gameplay view)
+    beginTransition();
+    transitionProgress = 1;
+    finishTransition();
+  }
+});
+
+window.addEventListener('keydown', (e) => {
+  if (state !== 'playing') return;
+  if (keys[e.code]) return; // prevent repeat
+  keys[e.code] = true;
+
+  if ((e.code === 'ArrowRight' || e.code === 'KeyD') && currentLane > 0) {
+    currentLane--;
+    targetX = LANES[currentLane];
+    playLaneSwitch();
+  }
+  if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && currentLane < 2) {
+    currentLane++;
+    targetX = LANES[currentLane];
+    playLaneSwitch();
+  }
+  if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && !isJumping) {
+    // Cancel roll immediately if rolling
+    isRolling = false;
+    rollTimer = 0;
+    penguin.scale.set(1, 1, 1);
+    penguin.rotation.x = 0;
+    isJumping = true;
+    jumpVelocity = JUMP_VELOCITY;
+    playJump();
+  }
+  if ((e.code === 'ArrowDown' || e.code === 'KeyS') && !isRolling) {
+    if (isJumping) {
+      jumpVelocity = -SLAM_DOWN_SPEED;
+    } else {
+      isRolling = true;
+      rollTimer = ROLL_DURATION;
+    }
+    playRoll();
+  }
+});
+window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+// Touch support (gameplay only)
+let touchStartX = 0;
+let touchStartY = 0;
+window.addEventListener('touchstart', (e) => {
+  if (state !== 'playing') return;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+});
+window.addEventListener('touchend', (e) => {
+  if (state !== 'playing') return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dy) > Math.abs(dx) && dy > 40) {
+    // Swipe down = roll
+    if (!isRolling) {
+      if (isJumping) {
+        jumpVelocity = -SLAM_DOWN_SPEED;
+      } else {
+        isRolling = true;
+        rollTimer = ROLL_DURATION;
+      }
+      playRoll();
+    }
+  } else if (Math.abs(dx) > 30) {
+    if (dx > 0 && currentLane > 0) { currentLane--; targetX = LANES[currentLane]; playLaneSwitch(); }
+    if (dx < 0 && currentLane < 2) { currentLane++; targetX = LANES[currentLane]; playLaneSwitch(); }
+  } else {
+    // Tap = jump
+    if (!isJumping) {
+      isRolling = false; rollTimer = 0;
+      penguin.scale.set(1, 1, 1); penguin.rotation.x = 0;
+      isJumping = true; jumpVelocity = JUMP_VELOCITY; playJump();
+    }
+  }
+});
+
+// ── Resize ──
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── Animation Loop ──
+const clock = new THREE.Clock();
+
+// Helper: smooth ease-in-out
+function easeInOut(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// Menu animation time (separate from game clock)
+let menuTime = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05); // cap delta
+
+  // ── Menu state: side-view camera, penguin running in place ──
+  if (state === 'start') {
+    menuTime += dt;
+    // Gentle orbit around the penguin
+    const orbitAngle = menuTime * 0.15;
+    const radius = 6;
+    camera.position.set(
+      Math.cos(orbitAngle) * radius,
+      2.5 + Math.sin(menuTime * 0.3) * 0.3,
+      Math.sin(orbitAngle) * radius
+    );
+    camera.lookAt(0, 1.2, 0);
+
+    // Animate penguin running in place on menu
+    const menuRunCycle = menuTime * 8;
+    const menuWaddle = Math.sin(menuTime * 3) * 0.15;
+    const menuLeg = Math.sin(menuRunCycle) * 0.7;
+    const menuLegBack = Math.sin(menuRunCycle + Math.PI) * 0.7;
+    penguin.traverse((child) => {
+      if (child.name === 'leftWing') child.rotation.z = -0.2 + menuWaddle;
+      if (child.name === 'rightWing') child.rotation.z = 0.2 - menuWaddle;
+      if (child.name === 'leftLeg') child.rotation.x = menuLeg;
+      if (child.name === 'rightLeg') child.rotation.x = menuLegBack;
+    });
+    penguin.position.y = Math.abs(Math.sin(menuTime * 4)) * 0.08;
+  }
+
+  // ── Camera transition: menu → gameplay ──
+  if (state === 'transition') {
+    transitionProgress += dt * 0.8; // ~1.25 seconds
+    const t = easeInOut(Math.min(transitionProgress, 1));
+
+    // Lerp camera position
+    camera.position.lerpVectors(MENU_CAM_POS, GAME_CAM_POS, t);
+
+    // Lerp look target
+    const lookTarget = new THREE.Vector3();
+    lookTarget.lerpVectors(MENU_CAM_TARGET, GAME_CAM_TARGET, t);
+    camera.lookAt(lookTarget);
+
+    // Keep penguin running animation during transition
+    menuTime += dt;
+    const trRunCycle = menuTime * 8;
+    const trWaddle = Math.sin(menuTime * 3) * 0.15;
+    const trLeg = Math.sin(trRunCycle) * 0.7;
+    const trLegBack = Math.sin(trRunCycle + Math.PI) * 0.7;
+    penguin.traverse((child) => {
+      if (child.name === 'leftWing') child.rotation.z = -0.2 + trWaddle;
+      if (child.name === 'rightWing') child.rotation.z = 0.2 - trWaddle;
+      if (child.name === 'leftLeg') child.rotation.x = trLeg;
+      if (child.name === 'rightLeg') child.rotation.x = trLegBack;
+    });
+    penguin.position.y = Math.abs(Math.sin(menuTime * 4)) * 0.08;
+
+    if (transitionProgress >= 1) {
+      finishTransition();
+    }
+  }
+
+  if (state === 'playing') {
+    // Speed increase
+    speed = Math.min(speed + SPEED_INCREASE * dt, MAX_SPEED);
+
+    // Distance
+    distanceTraveled += speed * dt;
+
+    // Lane movement
+    penguin.position.x += (targetX - penguin.position.x) * LANE_LERP_SPEED * dt;
+
+    // Jump
+    if (isJumping) {
+      penguin.position.y += jumpVelocity * dt;
+      jumpVelocity -= GRAVITY * dt;
+      if (penguin.position.y <= 0) {
+        penguin.position.y = 0;
+        isJumping = false;
+        // If we slammed down (high downward velocity), start rolling on landing
+        if (jumpVelocity <= -SLAM_DOWN_SPEED * 0.8) {
+          isRolling = true;
+          rollTimer = ROLL_DURATION;
+        }
+        jumpVelocity = 0;
+      }
+    }
+
+    // Roll timer
+    if (isRolling) {
+      rollTimer -= dt;
+      if (rollTimer <= 0) {
+        isRolling = false;
+        rollTimer = 0;
+      }
+    }
+
+    // Roll visual — squash penguin flat and tilt forward
+    if (isRolling) {
+      const targetScaleY = 0.35;
+      const targetScaleXZ = 1.3;
+      const targetRotX = -Math.PI / 3;
+      penguin.scale.y += (targetScaleY - penguin.scale.y) * 15 * dt;
+      penguin.scale.x += (targetScaleXZ - penguin.scale.x) * 15 * dt;
+      penguin.scale.z += (targetScaleXZ - penguin.scale.z) * 15 * dt;
+      penguin.rotation.x += (targetRotX - penguin.rotation.x) * 15 * dt;
+    } else {
+      penguin.scale.y += (1 - penguin.scale.y) * 12 * dt;
+      penguin.scale.x += (1 - penguin.scale.x) * 12 * dt;
+      penguin.scale.z += (1 - penguin.scale.z) * 12 * dt;
+      penguin.rotation.x += (0 - penguin.rotation.x) * 12 * dt;
+    }
+
+    // Wing waddle + leg running animation
+    const runCycle = distanceTraveled * 6; // leg speed tied to distance
+    const waddleAngle = Math.sin(distanceTraveled * 3) * 0.15;
+    const legSwing = isJumping ? 0.3 : (isRolling ? 0 : Math.sin(runCycle) * 0.7);
+    const legSwingBack = isJumping ? 0.3 : (isRolling ? 0 : Math.sin(runCycle + Math.PI) * 0.7);
+    penguin.traverse((child) => {
+      if (child.name === 'leftWing') child.rotation.z = -0.2 + waddleAngle;
+      if (child.name === 'rightWing') child.rotation.z = 0.2 - waddleAngle;
+      if (child.name === 'leftLeg') child.rotation.x = legSwing;
+      if (child.name === 'rightLeg') child.rotation.x = legSwingBack;
+    });
+
+    // Slight body bob
+    if (!isJumping && !isRolling) {
+      penguin.position.y = Math.abs(Math.sin(distanceTraveled * 4)) * 0.08;
+    }
+
+    // Move obstacles toward penguin
+    for (let i = activeObstacles.length - 1; i >= 0; i--) {
+      const tree = activeObstacles[i];
+      tree.position.z -= speed * dt;
+      if (tree.position.z < DESPAWN_DISTANCE) {
+        tree.visible = false;
+        obstaclePool.push(tree);
+        activeObstacles.splice(i, 1);
+      }
+    }
+
+    // Move giants
+    for (let i = activeGiants.length - 1; i >= 0; i--) {
+      const g = activeGiants[i];
+      g.position.z -= speed * dt;
+      if (g.position.z < DESPAWN_DISTANCE) {
+        g.visible = false;
+        giantPool.push(g);
+        activeGiants.splice(i, 1);
+      }
+    }
+
+    // Move rocks
+    for (let i = activeRocks.length - 1; i >= 0; i--) {
+      const rock = activeRocks[i];
+      rock.position.z -= speed * dt;
+      if (rock.position.z < DESPAWN_DISTANCE) {
+        rock.visible = false;
+        rockPool.push(rock);
+        activeRocks.splice(i, 1);
+      }
+    }
+
+    // Move barriers
+    for (let i = activeBarriers.length - 1; i >= 0; i--) {
+      const barrier = activeBarriers[i];
+      barrier.position.z -= speed * dt;
+      if (barrier.position.z < DESPAWN_DISTANCE) {
+        barrier.visible = false;
+        barrierPool.push(barrier);
+        activeBarriers.splice(i, 1);
+      }
+    }
+
+    // Move ramps
+    for (let i = activeRamps.length - 1; i >= 0; i--) {
+      const ramp = activeRamps[i];
+      ramp.position.z -= speed * dt;
+      if (ramp.position.z < DESPAWN_DISTANCE) {
+        ramp.visible = false;
+        rampPool.push(ramp);
+        activeRamps.splice(i, 1);
+      }
+    }
+
+    // Move snowballs
+    for (let i = activeSnowballs.length - 1; i >= 0; i--) {
+      const sb = activeSnowballs[i];
+      sb.position.z -= speed * dt;
+
+      // Rotation animation
+      const ring = sb.children.find(c => c.name === 'ring');
+      if (ring) {
+        ring.rotation.x += dt * 2;
+        ring.rotation.y += dt * 1.5;
+      }
+      sb.children[0].rotation.y += dt * 2;
+
+      // Collected animation
+      if (sb.userData.collected) {
+        sb.scale.multiplyScalar(1 - dt * 5);
+        if (sb.scale.x < 0.05) {
+          sb.visible = false;
+          snowballPool.push(sb);
+          activeSnowballs.splice(i, 1);
+          continue;
+        }
+      }
+
+      if (sb.position.z < DESPAWN_DISTANCE) {
+        sb.visible = false;
+        snowballPool.push(sb);
+        activeSnowballs.splice(i, 1);
+      }
+    }
+
+    // Scroll nextPatternZ with the world (obstacles move toward player)
+    nextPatternZ -= speed * dt;
+
+    // Spawn new patterns to keep the pipeline full
+    while (nextPatternZ < SPAWN_DISTANCE) {
+      spawnPattern();
+    }
+
+    // Collisions
+    checkCollisions();
+
+    // UI
+    const totalScore = snowballCount * 10 + Math.floor(distanceTraveled);
+    snowballScoreEl.textContent = `Snowballs: ${snowballCount}`;
+    distanceScoreEl.textContent = `Distance: ${Math.floor(distanceTraveled)}m`;
+    totalScoreEl.textContent = `Score: ${totalScore}`;
+  }
+
+  // Update collection particles
+  if (particleLife > 0) {
+    particleLife -= dt;
+    for (let i = 0; i < particleCount; i++) {
+      particlePositions[i * 3] += particleVelocities[i].x * dt;
+      particlePositions[i * 3 + 1] += particleVelocities[i].y * dt;
+      particlePositions[i * 3 + 2] += particleVelocities[i].z * dt;
+      particleVelocities[i].y -= 5 * dt;
+    }
+    particleGeo.attributes.position.needsUpdate = true;
+    particleMat.opacity = Math.max(0, particleLife / 0.6) * 0.8;
+    if (particleLife <= 0) particles.visible = false;
+  }
+
+  // Blizzard snow
+  for (let i = 0; i < bgSnowCount; i++) {
+    bgSnowPos[i * 3] += bgSnowVel[i].x * dt;
+    bgSnowPos[i * 3 + 1] += bgSnowVel[i].y * dt;
+    bgSnowPos[i * 3 + 2] += bgSnowVel[i].z * dt;
+    if (bgSnowPos[i * 3 + 1] < -1 || bgSnowPos[i * 3] < -35) {
+      bgSnowPos[i * 3] = 15 + Math.random() * 30;
+      bgSnowPos[i * 3 + 1] = 15 + Math.random() * 10;
+      bgSnowPos[i * 3 + 2] = Math.random() * 90 - 10;
+    }
+  }
+  bgSnowGeo.attributes.position.needsUpdate = true;
+
+  // Foreground snow
+  for (let i = 0; i < fgSnowCount; i++) {
+    fgSnowPos[i * 3] += fgSnowVel[i].x * dt;
+    fgSnowPos[i * 3 + 1] += fgSnowVel[i].y * dt;
+    fgSnowPos[i * 3 + 2] += fgSnowVel[i].z * dt;
+    if (fgSnowPos[i * 3 + 1] < -1 || fgSnowPos[i * 3] < -15) {
+      fgSnowPos[i * 3] = 8 + Math.random() * 12;
+      fgSnowPos[i * 3 + 1] = 8 + Math.random() * 7;
+      fgSnowPos[i * 3 + 2] = Math.random() * 30 - 15;
+    }
+  }
+  fgSnowGeo.attributes.position.needsUpdate = true;
+
+  // Water wave animation
+  const time = clock.elapsedTime;
+  waterLeft.position.y = -0.8 + Math.sin(time * 0.7) * 0.15;
+  waterRight.position.y = -0.8 + Math.sin(time * 0.7 + 1) * 0.15;
+  waterLeft2.position.y = waterLeft.position.y;
+  waterRight2.position.y = waterRight.position.y;
+
+  // Floating iceberg bobbing
+  for (const berg of activeIcebergs) {
+    berg.position.y = berg.userData.baseY + Math.sin(time * berg.userData.bobSpeed + berg.userData.bobPhase) * 0.3;
+    berg.rotation.z = Math.sin(time * berg.userData.bobSpeed * 0.5 + berg.userData.bobPhase) * 0.03;
+  }
+
+  // Ground + environment scrolling
+  if (state === 'playing') {
+    ground.position.z -= speed * dt;
+    ground2.position.z -= speed * dt;
+    if (ground.position.z < -100) ground.position.z += 400;
+    if (ground2.position.z < -100) ground2.position.z += 400;
+
+    // Water scrolls with ground
+    waterLeft.position.z -= speed * dt;
+    waterRight.position.z -= speed * dt;
+    waterLeft2.position.z -= speed * dt;
+    waterRight2.position.z -= speed * dt;
+    if (waterLeft.position.z < -100) { waterLeft.position.z += 400; waterRight.position.z += 400; }
+    if (waterLeft2.position.z < -100) { waterLeft2.position.z += 400; waterRight2.position.z += 400; }
+
+    // Ice edges scroll
+    iceEdgeLeft1.position.z -= speed * dt;
+    iceEdgeRight1.position.z -= speed * dt;
+    iceEdgeLeft2.position.z -= speed * dt;
+    iceEdgeRight2.position.z -= speed * dt;
+    if (iceEdgeLeft1.position.z < -200) { iceEdgeLeft1.position.z += 400; iceEdgeRight1.position.z += 400; }
+    if (iceEdgeLeft2.position.z < -200) { iceEdgeLeft2.position.z += 400; iceEdgeRight2.position.z += 400; }
+
+    // Lane dividers scroll with ground
+    for (let i = 0; i < laneDividers.length; i++) {
+      laneDividers[i].position.z -= speed * dt;
+      if (laneDividers[i].position.z < -100) laneDividers[i].position.z += 400;
+    }
+
+    // Floating icebergs
+    nextIcebergZ -= speed * dt;
+    while (nextIcebergZ < SPAWN_DISTANCE + 30) {
+      spawnFloatingIceberg();
+    }
+    for (let i = activeIcebergs.length - 1; i >= 0; i--) {
+      activeIcebergs[i].position.z -= speed * dt;
+      if (activeIcebergs[i].position.z < -30) {
+        activeIcebergs[i].visible = false;
+        icebergPool.push(activeIcebergs[i]);
+        activeIcebergs.splice(i, 1);
+      }
+    }
+
+    // Side decorations
+    nextDecoZ -= speed * dt;
+    while (nextDecoZ < SPAWN_DISTANCE) {
+      spawnSideDecoration();
+    }
+    for (let i = activeSideDecos.length - 1; i >= 0; i--) {
+      activeSideDecos[i].position.z -= speed * dt;
+      if (activeSideDecos[i].position.z < DESPAWN_DISTANCE) {
+        activeSideDecos[i].visible = false;
+        sideDecoPool.push(activeSideDecos[i]);
+        activeSideDecos.splice(i, 1);
+      }
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>
